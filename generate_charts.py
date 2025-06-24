@@ -55,12 +55,18 @@ def create_combined_charts(df):
     """
     Create a single HTML file with both charts
     """
-    # Create subplots with 3 rows and 1 column
+    # Create subplots with 5 rows and 1 column
     fig = make_subplots(
-        rows=3, cols=1,
-        subplot_titles=['Student Enrollment by Year', 'Student Enrollment by Year and Course', 'Course Popularity by Duration'],
-        vertical_spacing=0.08,
-        specs=[[{"type": "bar"}], [{"type": "bar"}], [{"type": "bar"}]]
+        rows=5, cols=1,
+        subplot_titles=[
+            'Student Enrollment by Year',
+            'Student Enrollment by Year and Course',
+            'Course Popularity by Duration',
+            'Gender Distribution',
+            'Gender Distribution per Year'
+        ],
+        vertical_spacing=0.15,  # Adjusted for 5 charts
+        specs=[[{"type": "bar"}], [{"type": "bar"}], [{"type": "bar"}], [{"type": "pie"}], [{"type": "bar"}]]
     )
     
     # Chart 1: Overall enrollment by year (using UNIQUE_ID for counting)
@@ -140,29 +146,166 @@ def create_combined_charts(df):
             row=3, col=1
         )
     
-    # Update layout
+    # Define gender color map
+    gender_color_map = {
+        'Male': '#4F6BED',    # blue
+        'Female': '#F653A6'   # pink
+    }
+
+    # Chart 4: Gender distribution (using UNIQUE_ID for counting)
+    gender_counts = df.groupby('GENDER')['UNIQUE_ID'].nunique().reset_index(name='count')
+    gender_counts = gender_counts[gender_counts['GENDER'] != 'Unknown']  # Optionally exclude 'Unknown'
+
+    # Only show legend for gender in pie chart, not in bar chart (handled below)
+    fig.add_trace(
+        go.Pie(
+            labels=gender_counts['GENDER'],
+            values=gender_counts['count'],
+            textinfo='label+percent',
+            hoverinfo='label+value+percent',
+            name='Gender Distribution',
+            hole=0.4,
+            marker=dict(
+                colors=[gender_color_map.get(g, '#CCCCCC') for g in gender_counts['GENDER']],
+                line=dict(color='#000000', width=1)
+            ),
+            sort=False,
+            legendgroup='gender',
+            showlegend=True
+        ),
+        row=4, col=1
+    )
+    
+    # Chart 5: Gender distribution per year (bar chart, using UNIQUE_ID for counting)
+    gender_year_counts = df.groupby(['YEAR', 'GENDER'])['UNIQUE_ID'].nunique().reset_index(name='count')
+    gender_year_counts = gender_year_counts[gender_year_counts['GENDER'] != 'Unknown']  # Optionally exclude 'Unknown'
+    gender_list = gender_year_counts['GENDER'].unique()
+
+    for i, gender in enumerate(gender_list):
+        gender_data = gender_year_counts[gender_year_counts['GENDER'] == gender]
+        fig.add_trace(
+            go.Bar(
+                x=gender_data['YEAR'],
+                y=gender_data['count'],
+                name=gender,
+                text=gender_data['count'],
+                textposition='auto',
+                marker_color=gender_color_map.get(gender, '#CCCCCC'),
+                legendgroup='gender',
+                showlegend=False,  # Only show legend in pie chart
+                hovertemplate='<b>Year:</b> %{x}<br>' +
+                             f'<b>Gender:</b> {gender}<br>' +
+                             '<b>Number of Students:</b> %{y}<br>' +
+                             '<extra></extra>'
+            ),
+            row=5, col=1
+        )
+
+    # Update layout for 5 rows
     fig.update_layout(
         title='Student Enrollment Analysis Dashboard',
         template='plotly_white',
-        height=1200,
-        showlegend=True,
-        barmode='group'
+        height=1500,  # Increased height for 5 charts
+        showlegend=False,
+        barmode='group',
+        margin=dict(l=60, r=60, t=80, b=80)
     )
-    
-    # Update x-axis and y-axis labels
+
+    # Update x-axis and y-axis labels for all charts
     fig.update_xaxes(title_text="Academic Year", row=1, col=1)
     fig.update_yaxes(title_text="Number of Students", row=1, col=1)
     fig.update_xaxes(title_text="Academic Year", row=2, col=1)
     fig.update_yaxes(title_text="Number of Students", row=2, col=1)
     fig.update_xaxes(title_text="Course (Duration)", row=3, col=1)
     fig.update_yaxes(title_text="Number of Students", row=3, col=1)
+    fig.update_xaxes(showticklabels=False, row=4, col=1)
+    fig.update_yaxes(showticklabels=False, row=4, col=1)
+    fig.update_xaxes(title_text="Academic Year", row=5, col=1)
+    fig.update_yaxes(title_text="Number of Students", row=5, col=1)
     
-    # Rotate x-axis labels for the third chart to prevent overlap
+    # Rotate x-axis labels for the third and fifth chart to prevent overlap
     fig.update_xaxes(tickangle=45, row=3, col=1)
+    fig.update_xaxes(tickangle=45, row=5, col=1)
     
-    # In the layout, set category_orders for the x-axis of row 2
+    # In the layout, set category_orders for the x-axis of row 2 and 5
     fig.update_xaxes(categoryorder='array', categoryarray=year_order, row=2, col=1)
+    fig.update_xaxes(categoryorder='array', categoryarray=year_order, row=5, col=1)
     
+    # Hide the global legend
+    fig.update_layout(showlegend=False)
+
+    # Add custom legend for Chart 2 (Course-wise enrollment by year)
+    course_legend_text = "<b>Course</b><br>" + "<br>".join(
+        f"<span style='color:{course_color_map[c]}'>&#9632;</span> {c}" for c in all_courses
+    )
+    fig.add_annotation(
+        dict(
+            x=1.02, y=0.74, xref='paper', yref='paper',  # y adjusted for 2nd chart
+            text=course_legend_text,
+            showarrow=False,
+            align='left',
+            xanchor='left',
+            yanchor='top',
+            font=dict(size=13),
+            bordercolor="#cccccc",
+            borderwidth=1,
+            bgcolor="#fff"
+        )
+    )
+
+    # Add custom legend for Chart 3 (Course Popularity by Duration)
+    course_duration_legend_text = "<b>Course</b><br>" + "<br>".join(
+        f"<span style='color:{course_color_map[c]}'>&#9632;</span> {c}" for c in all_courses
+    )
+    fig.add_annotation(
+        dict(
+            x=1.02, y=0.54, xref='paper', yref='paper',  # y adjusted for 3rd chart
+            text=course_duration_legend_text,
+            showarrow=False,
+            align='left',
+            xanchor='left',
+            yanchor='top',
+            font=dict(size=13),
+            bordercolor="#cccccc",
+            borderwidth=1,
+            bgcolor="#fff"
+        )
+    )
+
+    # Add custom legend for Chart 4 (Gender Pie)
+    gender_legend_text = "<b>Gender</b><br>" + "<br>".join(
+        f"<span style='color:{gender_color_map[g]}'>&#9632;</span> {g}" for g in gender_color_map.keys()
+    )
+    fig.add_annotation(
+        dict(
+            x=1.02, y=0.34, xref='paper', yref='paper',  # y adjusted for 4th chart
+            text=gender_legend_text,
+            showarrow=False,
+            align='left',
+            xanchor='left',
+            yanchor='top',
+            font=dict(size=13),
+            bordercolor="#cccccc",
+            borderwidth=1,
+            bgcolor="#fff"
+        )
+    )
+    # Add custom legend for Chart 5 (Gender Bar)
+    fig.add_annotation(
+        dict(
+            x=1.02, y=0.14, xref='paper', yref='paper',  # y adjusted for 5th chart
+            text=gender_legend_text,
+            showarrow=False,
+            align='left',
+            xanchor='left',
+            yanchor='top',
+            font=dict(size=13),
+            bordercolor="#cccccc",
+            borderwidth=1,
+            bgcolor="#fff"
+        )
+    )
+
     # Save the combined chart
     fig.write_html('student_enrollment_dashboard.html')
     print("Combined dashboard saved as 'student_enrollment_dashboard.html'")
