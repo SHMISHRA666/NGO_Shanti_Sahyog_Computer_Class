@@ -248,10 +248,6 @@ The dashboard can be customized by modifying `generate_charts.py`:
 4. Test thoroughly
 5. Submit a pull request
 
-## 📝 License
-
-This project is open source and available under the [MIT License](LICENSE).
-
 ## 🆘 Support
 
 For issues, questions, or feature requests:
