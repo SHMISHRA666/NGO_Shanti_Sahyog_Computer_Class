@@ -55,9 +55,9 @@ def create_combined_charts(df):
     """
     Create a single HTML file with both charts
     """
-    # Create subplots with 7 rows and 1 column
+    # Create subplots with 8 rows and 1 column (add Present Status Pie)
     fig = make_subplots(
-        rows=7, cols=1,
+        rows=8, cols=1,
         subplot_titles=[
             'Student Enrollment by Year',
             'Student Enrollment by Year and Course',
@@ -65,10 +65,11 @@ def create_combined_charts(df):
             'Gender Distribution',
             'Gender Distribution per Year',
             'Total vs Employed Students per Year',
-            'Total vs Employed Students per Year and Course'
+            'Total vs Employed Students per Year and Course',
+            ''  # No subplot title for the pie chart
         ],
-        vertical_spacing=0.08,  # Adjusted for 7 charts
-        specs=[[{"type": "bar"}], [{"type": "bar"}], [{"type": "bar"}], [{"type": "pie"}], [{"type": "bar"}], [{"type": "bar"}], [{"type": "bar"}]]
+        vertical_spacing=0.08,  # Adjusted for 8 charts
+        specs=[[{"type": "bar"}], [{"type": "bar"}], [{"type": "bar"}], [{"type": "pie"}], [{"type": "bar"}], [{"type": "bar"}], [{"type": "bar"}], [{"type": "pie"}]]
     )
     
     # Chart 1: Overall enrollment by year (using UNIQUE_ID for counting)
@@ -259,14 +260,56 @@ def create_combined_charts(df):
             row=7, col=1
         )
 
-    # Update layout for 7 rows
+    # Chart 8: Present Status Pie Chart (Outcomes for students after course completion)
+    present_status_counts = df.groupby('PRESENT_STATUS')['UNIQUE_ID'].nunique().reset_index(name='count')
+    present_status_color_map = {
+        'Employed': '#2ca02c',
+        'Student': '#1f77b4',
+        'Homemaker': '#ff7f0e',
+        'Jobseeker': '#d62728',
+        'Other': '#9467bd'
+    }
+    fig.add_trace(
+        go.Pie(
+            labels=present_status_counts['PRESENT_STATUS'],
+            values=present_status_counts['count'],
+            textinfo='label+percent',
+            hoverinfo='label+value+percent',
+            name='Present Status',
+            marker=dict(
+                colors=[present_status_color_map.get(s, '#CCCCCC') for s in present_status_counts['PRESENT_STATUS']],
+                line=dict(color='#000000', width=1)
+            ),
+            sort=False,
+            legendgroup='present_status',
+            showlegend=True,
+            domain=dict(y=[0.18, 0.88])  # Move the pie chart down in its cell
+        ),
+        row=8, col=1
+    )
+    # Add custom annotation for the pie chart title
+    fig.add_annotation(
+        dict(
+            x=0.5,
+            y=0.08,
+            xref='paper',
+            yref='paper',
+            text='Outcomes for Students after Course Completion (Status)',
+            showarrow=False,
+            font=dict(size=18, family='Arial', color='black'),
+            xanchor='center',
+            yanchor='bottom'
+        )
+    )
+
+    # Update layout for 8 rows
     fig.update_layout(
-        title='Student Enrollment Analysis Dashboard',
+        title='Student Enrollment Analysis for Computer Class in Shanti Sahyog NGO',
         template='plotly_white',
-        height=2500,  # Increased height for 7 charts
+        height=2900,  # Increased height for 8 charts
         showlegend=False,
         barmode='group',
-        margin=dict(l=60, r=260, t=80, b=80)  # Increased right margin
+        margin=dict(l=60, r=260, t=80, b=80)
     )
 
     # Update x-axis and y-axis labels for all charts
@@ -284,6 +327,8 @@ def create_combined_charts(df):
     fig.update_yaxes(title_text="Number of Students", row=6, col=1)
     fig.update_xaxes(title_text="Academic Year", row=7, col=1)
     fig.update_yaxes(title_text="Number of Students", row=7, col=1)
+    fig.update_xaxes(title_text="Present Status", row=8, col=1)
+    fig.update_yaxes(title_text="Number of Students", row=8, col=1)
     
     # Rotate x-axis labels for the third and fifth chart to prevent overlap
     fig.update_xaxes(tickangle=45, row=3, col=1)
@@ -325,7 +370,7 @@ def create_combined_charts(df):
     fig.add_annotation(
         dict(
             x=1.01,
-            y=0.68,
+            y=0.72,  # Chart 3 legend
             xref='paper',
             yref='paper',
             text=course_duration_legend_text,
@@ -347,7 +392,7 @@ def create_combined_charts(df):
     fig.add_annotation(
         dict(
             x=1.01,
-            y=0.52,
+            y=0.60,  # Chart 4 legend
             xref='paper',
             yref='paper',
             text=gender_legend_text,
@@ -365,7 +410,7 @@ def create_combined_charts(df):
     fig.add_annotation(
         dict(
             x=1.01,
-            y=0.36,
+            y=0.45,  # Chart 5 legend
             xref='paper',
             yref='paper',
             text=gender_legend_text,
@@ -386,7 +431,7 @@ def create_combined_charts(df):
     fig.add_annotation(
         dict(
             x=1.01,
-            y=0.22,
+            y=0.3,  # Chart 6 legend
             xref='paper',
             yref='paper',
             text=employment_legend_text,
@@ -407,7 +452,7 @@ def create_combined_charts(df):
     fig.add_annotation(
         dict(
             x=1.01,
-            y=0.04,
+            y=0.20,  # Chart 7 legend
             xref='paper',
             yref='paper',
             text=employment_course_legend_text,
@@ -415,6 +460,27 @@ def create_combined_charts(df):
             align='left',
             xanchor='left',
             yanchor='top',
+            font=dict(size=13),
+            bordercolor="#cccccc",
+            borderwidth=1,
+            bgcolor="#fff"
+        )
+    )
+    # Add custom legend for Chart 8 (Present Status Pie)
+    present_status_legend_text = "<b>Present Status</b><br>" + "<br>".join(
+        f"<span style='color:{present_status_color_map[s]}'>&#9632;</span> {s}" for s in present_status_counts['PRESENT_STATUS']
+    )
+    fig.add_annotation(
+        dict(
+            x=1.01,
+            y=0.01,
+            xref='paper',
+            yref='paper',
+            text=present_status_legend_text,
+            showarrow=False,
+            align='left',
+            xanchor='left',
+            yanchor='bottom',
             font=dict(size=13),
             bordercolor="#cccccc",
             borderwidth=1,

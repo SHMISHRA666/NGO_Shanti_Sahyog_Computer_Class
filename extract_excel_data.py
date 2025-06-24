@@ -254,6 +254,21 @@ for file, sheets in file_sheet_dict.items():
         # Add employment status
         df = add_employment_status(df)
         
+        # Add present status
+        def get_present_status(row):
+            if row.get('EMPLOYMENT_STATUS') == 'Employed':
+                return 'Employed'
+            status = str(row.get('CURRENT_STATUS', '')).lower()
+            if any(x in status for x in ['student', 'pursuing', 'studying', 'school', 'college', 'class', 'std', 'b.a', 'b.com', 'b.sc', 'b.a.', 'b.com.', 'b.sc.', 'bachelor', 'llb', 'msc', 'maitreyi', 'ignou', 'du', 'nios', 'univ', 'university']):
+                return 'Student'
+            if any(x in status for x in ['home maker', 'homemaker', 'home-maker', 'home maker', 'home-maker', 'home maker', 'homermaker', 'home maker']):
+                return 'Homemaker'
+            if any(x in status for x in ['seeking job', 'seeking jobs', 'jobseeker', 'job seeker', 'seeking', 'looking for job', 'looking for work', 'seeking employment', 'seeking jobs in', 'seeking jobs as', 'seeking jobs at', 'seeking jobs', 'seeking job', 'seeking jobs', 'jobless', 'unemployed']):
+                return 'Jobseeker'
+            return 'Other'
+        df['PRESENT_STATUS'] = df.apply(get_present_status, axis=1)
+
+        # print(df[['PRESENT_STATUS', 'CURRENT_STATUS', 'EMPLOYMENT_STATUS']].drop_duplicates())
         
         sheet_data[f"{file}_{sheet}"] = df
         
