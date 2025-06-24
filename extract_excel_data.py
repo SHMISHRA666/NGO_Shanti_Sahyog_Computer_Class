@@ -189,6 +189,21 @@ def extract_gender(df):
     df['GENDER'] = df['FATHER_HUSBAND'].apply(get_gender)
     return df
 
+def add_employment_status(df):
+    """
+    Add a new column EMPLOYMENT_STATUS: 'Employed' if MONTHLY_INCOME contains any digit other than zero, else 'Not Employed'.
+    """
+    def get_status(val):
+        if pd.isnull(val) or str(val).strip() == '':
+            return 'Not Employed'
+        val_str = str(val)
+        # If there is any digit other than zero, it's employed
+        if re.search(r'[1-9]', val_str):
+            return 'Employed'
+        return 'Not Employed'
+    df['EMPLOYMENT_STATUS'] = df['MONTHLY_INCOME'].apply(get_status)
+    return df
+
 # Read the Excel files
 excel_files = ["Updated (07 -10 -2024) Batch 2021 to 2024.xlsx", "EDITED NIIT 10 sept 2024.xlsx"]
 
@@ -235,6 +250,10 @@ for file, sheets in file_sheet_dict.items():
         
         # Extract gender
         df = extract_gender(df)
+        
+        # Add employment status
+        df = add_employment_status(df)
+        
         
         sheet_data[f"{file}_{sheet}"] = df
         

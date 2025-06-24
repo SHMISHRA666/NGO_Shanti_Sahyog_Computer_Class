@@ -55,18 +55,20 @@ def create_combined_charts(df):
     """
     Create a single HTML file with both charts
     """
-    # Create subplots with 5 rows and 1 column
+    # Create subplots with 7 rows and 1 column
     fig = make_subplots(
-        rows=5, cols=1,
+        rows=7, cols=1,
         subplot_titles=[
             'Student Enrollment by Year',
             'Student Enrollment by Year and Course',
             'Course Popularity by Duration',
             'Gender Distribution',
-            'Gender Distribution per Year'
+            'Gender Distribution per Year',
+            'Total vs Employed Students per Year',
+            'Total vs Employed Students per Year and Course'
         ],
-        vertical_spacing=0.15,  # Adjusted for 5 charts
-        specs=[[{"type": "bar"}], [{"type": "bar"}], [{"type": "bar"}], [{"type": "pie"}], [{"type": "bar"}]]
+        vertical_spacing=0.08,  # Adjusted for 7 charts
+        specs=[[{"type": "bar"}], [{"type": "bar"}], [{"type": "bar"}], [{"type": "pie"}], [{"type": "bar"}], [{"type": "bar"}], [{"type": "bar"}]]
     )
     
     # Chart 1: Overall enrollment by year (using UNIQUE_ID for counting)
@@ -201,14 +203,70 @@ def create_combined_charts(df):
             row=5, col=1
         )
 
-    # Update layout for 5 rows
+    # Chart 6: Total vs Employed Students per Year
+    total_per_year = df.groupby('YEAR')['UNIQUE_ID'].nunique().reset_index(name='Total Students')
+    employed_per_year = df[df['EMPLOYMENT_STATUS'] == 'Employed'].groupby('YEAR')['UNIQUE_ID'].nunique().reset_index(name='Employed Students')
+    merged_year = pd.merge(total_per_year, employed_per_year, on='YEAR', how='left').fillna(0)
+    x_years = merged_year['YEAR']
+    fig.add_trace(
+        go.Bar(
+            x=x_years,
+            y=merged_year['Total Students'],
+            name='Total Students',
+            marker_color='#7fc7e3',
+            text=merged_year['Total Students'],
+            textposition='auto',
+            legendgroup='employment',
+            showlegend=True,
+            hovertemplate='<b>Year:</b> %{x}<br>Total Students: %{y}<extra></extra>'
+        ),
+        row=6, col=1
+    )
+    fig.add_trace(
+        go.Bar(
+            x=x_years,
+            y=merged_year['Employed Students'],
+            name='Employed Students',
+            marker_color='#2ca02c',
+            text=merged_year['Employed Students'],
+            textposition='auto',
+            legendgroup='employment',
+            showlegend=True,
+            hovertemplate='<b>Year:</b> %{x}<br>Employed Students: %{y}<extra></extra>'
+        ),
+        row=6, col=1
+    )
+
+    # Chart 7: Employed Students per Year and Course (no total, sorted by year)
+    employed_per_year_course = df[df['EMPLOYMENT_STATUS'] == 'Employed'].groupby(['YEAR', 'COURSE'])['UNIQUE_ID'].nunique().reset_index(name='Employed Students')
+    # Sort years as in chart 2 and fill missing years with 0 for each course
+    employed_per_year_course['YEAR'] = pd.Categorical(employed_per_year_course['YEAR'], categories=year_order, ordered=True)
+    employed_per_year_course = employed_per_year_course.sort_values(['COURSE', 'YEAR'])
+    for course in all_courses:
+        course_data = employed_per_year_course[employed_per_year_course['COURSE'] == course].set_index('YEAR').reindex(year_order).reset_index()
+        fig.add_trace(
+            go.Bar(
+                x=course_data['YEAR'],
+                y=course_data['Employed Students'].fillna(0),
+                name=f'Employed Students - {course}',
+                marker_color=course_color_map[course],
+                text=course_data['Employed Students'].fillna(0),
+                textposition='auto',
+                legendgroup=f'employment_{course}',
+                showlegend=False,
+                hovertemplate=f'<b>Year:</b> %{{x}}<br>Employed Students ({course}): %{{y}}<extra></extra>'
+            ),
+            row=7, col=1
+        )
+
+    # Update layout for 7 rows
     fig.update_layout(
         title='Student Enrollment Analysis Dashboard',
         template='plotly_white',
-        height=1500,  # Increased height for 5 charts
+        height=2500,  # Increased height for 7 charts
         showlegend=False,
         barmode='group',
-        margin=dict(l=60, r=60, t=80, b=80)
+        margin=dict(l=60, r=260, t=80, b=80)  # Increased right margin
     )
 
     # Update x-axis and y-axis labels for all charts
@@ -222,6 +280,10 @@ def create_combined_charts(df):
     fig.update_yaxes(showticklabels=False, row=4, col=1)
     fig.update_xaxes(title_text="Academic Year", row=5, col=1)
     fig.update_yaxes(title_text="Number of Students", row=5, col=1)
+    fig.update_xaxes(title_text="Academic Year", row=6, col=1)
+    fig.update_yaxes(title_text="Number of Students", row=6, col=1)
+    fig.update_xaxes(title_text="Academic Year", row=7, col=1)
+    fig.update_yaxes(title_text="Number of Students", row=7, col=1)
     
     # Rotate x-axis labels for the third and fifth chart to prevent overlap
     fig.update_xaxes(tickangle=45, row=3, col=1)
@@ -240,7 +302,10 @@ def create_combined_charts(df):
     )
     fig.add_annotation(
         dict(
-            x=1.02, y=0.74, xref='paper', yref='paper',  # y adjusted for 2nd chart
+            x=1.01,
+            y=0.85,
+            xref='paper',
+            yref='paper',
             text=course_legend_text,
             showarrow=False,
             align='left',
@@ -259,7 +324,10 @@ def create_combined_charts(df):
     )
     fig.add_annotation(
         dict(
-            x=1.02, y=0.54, xref='paper', yref='paper',  # y adjusted for 3rd chart
+            x=1.01,
+            y=0.68,
+            xref='paper',
+            yref='paper',
             text=course_duration_legend_text,
             showarrow=False,
             align='left',
@@ -278,7 +346,10 @@ def create_combined_charts(df):
     )
     fig.add_annotation(
         dict(
-            x=1.02, y=0.34, xref='paper', yref='paper',  # y adjusted for 4th chart
+            x=1.01,
+            y=0.52,
+            xref='paper',
+            yref='paper',
             text=gender_legend_text,
             showarrow=False,
             align='left',
@@ -293,8 +364,53 @@ def create_combined_charts(df):
     # Add custom legend for Chart 5 (Gender Bar)
     fig.add_annotation(
         dict(
-            x=1.02, y=0.14, xref='paper', yref='paper',  # y adjusted for 5th chart
+            x=1.01,
+            y=0.36,
+            xref='paper',
+            yref='paper',
             text=gender_legend_text,
+            showarrow=False,
+            align='left',
+            xanchor='left',
+            yanchor='top',
+            font=dict(size=13),
+            bordercolor="#cccccc",
+            borderwidth=1,
+            bgcolor="#fff"
+        )
+    )
+    # Add custom legend for Chart 6 (Employment)
+    employment_legend_text = "<b>Employment</b><br>" + \
+        f"<span style='color:#7fc7e3'>&#9632;</span> Total Students<br>" + \
+        f"<span style='color:#2ca02c'>&#9632;</span> Employed Students"
+    fig.add_annotation(
+        dict(
+            x=1.01,
+            y=0.22,
+            xref='paper',
+            yref='paper',
+            text=employment_legend_text,
+            showarrow=False,
+            align='left',
+            xanchor='left',
+            yanchor='top',
+            font=dict(size=13),
+            bordercolor="#cccccc",
+            borderwidth=1,
+            bgcolor="#fff"
+        )
+    )
+    # Add custom legend for Chart 7 (Employment by Course)
+    employment_course_legend_text = "<b>Course</b><br>" + "<br>".join(
+        f"<span style='color:{course_color_map[c]}'>&#9632;</span> {c}" for c in all_courses
+    )
+    fig.add_annotation(
+        dict(
+            x=1.01,
+            y=0.04,
+            xref='paper',
+            yref='paper',
+            text=employment_course_legend_text,
             showarrow=False,
             align='left',
             xanchor='left',
