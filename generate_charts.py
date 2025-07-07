@@ -65,7 +65,7 @@ def create_combined_charts(df):
             'Gender Distribution',
             'Gender Distribution per Year',
             'Total vs Employed Students per Year',
-            'Total vs Employed Students per Year and Course',
+            'Employed Students per Year and Course',
             ''  # No subplot title for the pie chart
         ],
         vertical_spacing=0.08,  # Adjusted for 8 charts

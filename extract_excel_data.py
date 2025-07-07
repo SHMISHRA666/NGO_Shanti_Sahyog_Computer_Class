@@ -137,7 +137,7 @@ def clean_course_names(df):
         'BASIC + TALLY': 'Basic + Tally',
         'BASIC +Tally': 'Basic + Tally',
         'Tally': 'Tally',
-        'DIT': 'DIT',
+        'DIT': 'ADCA',
         'DTP': 'DTP',
         'NIIT': 'NIIT'
     }
